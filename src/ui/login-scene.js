@@ -558,7 +558,7 @@ export class LoginScene {
 
   /** The PIC for entering the game: notice 95 and registration (picFlag 0), the keyboard once (1), or none. */
   async picFor(picFlag) {
-    if (picFlag === 0) { await this.notice(95, 'info'); return this.registerPic(); }
+    if (picFlag === 0) return '';  // MISO: Cosmic runs PIC-off; its picFlag=0 means "disabled", not "register"
     if (picFlag === 1) return this.softKey();
     return '';
   }
@@ -1226,11 +1226,16 @@ export class LoginScene {
         rollPanel(); refresh();
       };
       const pick = async () => {
+        window.__misolog = window.__misolog || [];
+        window.__misolog.push('pick: sel=' + sel);
         if (sel < 0) return;
         const c = list.chars[sel];
+        window.__misolog.push('pick: char=' + c.stats.name + ' picFlag=' + list.picFlag);
         const pic = await this.picFor(list.picFlag);
+        window.__misolog.push('pick: picFor=' + JSON.stringify(pic));
         if (pic === null) return;
         const res = await this.s.selectChar(c.stats.id, pic);
+        window.__misolog.push('pick: selectChar res=' + JSON.stringify(res).slice(0, 200));
         if (list.picFlag === 0 && !res.wrongPic) this.picRegistered(list);
         if (res.wrongPic) { await this.notice(NOTICE.PIC_WRONG); return; }
         if (res.code !== undefined) { await this.loginFailed({ reason: res.code }); return; }
@@ -1317,7 +1322,8 @@ export class LoginScene {
           else if (key === 'ArrowRight' && sel < list.chars.length - 1) choose(sel + 1);
         },
         onPointer: (mx, my) => {
-          if (busy) return;
+          if (busy) { (window.__misolog = window.__misolog || []).push('ptr: busy ' + mx + ',' + my); return; }
+          (window.__misolog = window.__misolog || []).push('ptr: ' + Math.round(mx) + ',' + Math.round(my) + ' sel=' + sel);
           for (const a of arrows) if (inRect({ x: mx, y: my }, a.r)) { pageTo(a.d); return; }
           for (let i = 0; i < perPage; i++) {
             const idx = page * perPage + i;

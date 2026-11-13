@@ -3620,7 +3620,10 @@ export class Game {
       storageMeso: (meso) => this.storageWin?.setMeso(meso),
       storageError: (code) => this.storageWin?.error(code),
       quest: (id, status, data) => this.onQuest(id, status, data),
-      keymap: (km) => { this.keymap = km; this.dropForeignSkillKeys(); this.keyBar.render(); this.skillWin?.render(); },
+      keymap: (km) => {
+        try { const ov = JSON.parse(localStorage.getItem('voyage.keymap') || '{}'); for (const k of Object.keys(ov)) km[k] = ov[k]; } catch { /* bad overrides: server map as-is */ }
+        this.keymap = km; this.dropForeignSkillKeys(); this.keyBar.render(); this.skillWin?.render();
+      },
       // the client answers with the keys it now holds
       quickslots: (keys) => { this.quickKeys = keys || [...DEFAULT_QUICKSLOTS]; this.net?.changeQuickslots(this.quickKeys); this.statusBar?.render(); },
       skills: (list) => {
@@ -6325,6 +6328,7 @@ export class Game {
     // Seduce: your movement keys do nothing; you walk, look down and jump the way its value says
     const sd = this.seduceInput(), held = (k) => (sd ? (k === 'down' ? sd.y > 0 : k === 'up' ? sd.y < 0 : false) : inp.is(k));
     const jumpHit = () => (sd ? sd.jump : this.hitAction(ACTION.JUMP)), jumpHeld = () => (sd ? sd.jump : this.holdAction(ACTION.JUMP));
+    this.__diag = { fh: p.fh ? p.fh.id : null, fhY: p.fh ? p.fh.y1 : null, jhit: jumpHit(), jheld: jumpHeld(), act: p.action, x: Math.round(p.x), y: Math.round(p.y), vx: Math.round(p.vx || 0), vy: Math.round(p.vy || 0), dn: held('down'), sed: !!sd, map: this.map?.id, ft: this.map?.info?.fieldType, k45: JSON.stringify(this.keymap?.[45] ?? null), jcodes: this.keysFor(5, ACTION.JUMP).join('|'), acodes: this.keysFor(5, ACTION.ATTACK).join('|'), nport: (this.map?.portals?.length ?? -1), ports: (this.map?.portals || []).map(pp => `${pp.pn || '?'}:${pp.x},${pp.y}`).slice(0, 5).join(' '), pat: (this.map?.portalAt ? (this.map.portalAt(p.x, p.y)?.pn ?? 'NONE') : '?'), pcd: Math.round((this.portalCooldown ?? -1) * 100) };
     let dir = sd ? sd.x : (inp.is('right') ? 1 : 0) - (inp.is('left') ? 1 : 0);
     if (!sd && this.hasDisease(REVERSE)) dir = -dir;
     // stunned: no walking, jumping, climbing or attacking until it wears off (you still fall and slide to a stop)
@@ -10445,6 +10449,26 @@ export class Game {
       lap('chars');
     }
     this.warmSprites();
+    if (this.__diag) {
+      const d = this.__diag;
+      ctx.save();
+      ctx.font = 'bold 13px monospace'; ctx.textBaseline = 'top';
+      const lines = [
+        `MISO-DIAG map=${d.map} ft=${d.ft}`,
+        `fh=${d.fh} fhY=${d.fhY} act=${d.act}`,
+        `x=${d.x} y=${d.y} vx=${d.vx} vy=${d.vy}`,
+        `jhit=${d.jhit} jheld=${d.jheld} dn=${d.dn} sed=${d.sed}`,
+        `k45=${d.k45}`,
+        `jcodes=${d.jcodes} acodes=${d.acodes}`,
+        `nport=${d.nport} ports=${d.ports}`,
+        `pat=${d.pat} pcd=${d.pcd}`,
+      ];
+      for (let i = 0; i < lines.length; i++) {
+        ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(8, 128 + i * 16, 460, 15);
+        ctx.fillStyle = '#7CFC00'; ctx.fillText(lines[i], 10, 129 + i * 16);
+      }
+      ctx.restore();
+    }
     lap('chars');
     for (const e of mobs) if (e.flying && !e.doomArt && this.lifeInView(e)) e.draw(ctx, cam, this.assets);   // flyers go over every layer
     for (const sm of this.summons.values()) if (this.inView(sm.x, sm.y, 350, 450, 200)) sm.draw(ctx, cam);

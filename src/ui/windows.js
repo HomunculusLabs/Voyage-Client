@@ -191,6 +191,7 @@ export class WindowManager {
   // ---------------------------------------------------------------- input (canvas coordinates)
   pointer(type, x, y, dy = 0) {
     this.mouse = { x, y };
+    if (type === 'down') { window.__misolog = window.__misolog || []; const m = this.modal; const tw = this.top(x, y); let bs = ''; const tgt = m || tw; if (tgt && tgt.buttons) { bs = tgt.buttons.map((b) => `${Math.round(b.x + (tgt.x || 0))},${Math.round(b.y)}@${Math.round(b.w || 0)}x${Math.round(b.h || 0)}:hit=${b.hit(x - tgt.x, y - tgt.y)}`).join(' | '); } window.__misolog.push('wm.down ' + Math.round(x) + ',' + Math.round(y) + ' top=' + (tw?.constructor?.name || 'none') + ' modal=' + (m?.constructor?.name || 'none') + ' mxy=' + (tgt ? Math.round(tgt.x) + ',' + Math.round(tgt.y) + 'h' + Math.round(tgt.h || 0) : '-') + ' btns=[' + bs + ']'); }
     if (this.drag) {
       const d = this.drag;
       d.win.x = Math.round(Math.max(-d.win.w + 40, Math.min(UI_W - 40, x - d.dx)));
@@ -218,7 +219,7 @@ export class WindowManager {
     if (w) w.move?.(x - w.x, y - w.y);
 
     if (type === 'down') {
-      // menus close on any click outside them
+      const m2 = this.modal; if (m2) window.__misolog.push('hits: ' + m2.buttons.map((b) => `v=${b.visible} e=${b.enabled} hit(${x - m2.x},${y - m2.y})=${b.hit(x - m2.x, y - m2.y)}`).join(' ; '));
       for (const o of [...this.order]) if (o.transient && o !== w) this.close(o);
       // anything held by a click goes where the next click is (a quick second click on it is a double-click)
       const held = this.carry?.sticky ? this.carry : null, quick = held && performance.now() - held.at < 350 && Math.abs(held.x - x) < this.slop && Math.abs(held.y - y) < this.slop;
